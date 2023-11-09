@@ -259,20 +259,30 @@ class CheckCorrectAnswerView(APIView):
             playload = jwt.decode(token, 'secret', algorithm=['HS256'])
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed('Unauthenticated')   
-            
+
         user = CustomUser.objects.get(id=playload["id"])
         question = Questions.objects.get(pk = id1)
         choices = question.choices.get(pk = id2)
         exam = Exam.objects.get(pk = question.exam.id)
 
-        print(exam)
-
-        data = []
+        serializer = SubmitQuestionSerializer(data=request.data)
         
-        data.append({
-            'question' : question.question,
-            'choices': QuestionChoiceSerializer(choices).data
-        })
+        # serializer.save()
+        # return Response("Answer Submited")   
 
+        if serializer.is_valid():
+            # serializer.save()
+            return Response("Answer Submitted", status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # data = []
+        
+        # data.append({
+        #     'question' : question.question,
+        #     'choices': QuestionChoiceSerializer(choices).data
+        # })
+        # return Response(data)
 
-        return Response(data)
+class ShowResultView(APIView):
+    def get(self, request):
+        pass 

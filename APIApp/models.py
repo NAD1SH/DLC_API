@@ -82,7 +82,7 @@ class QuestionChoice(models.Model):
     is_correct = models.BooleanField()
 
     def __str__(self):
-        return self.question.question
+        return self.text
 
 
 class Result(models.Model):
@@ -95,3 +95,6 @@ class SubmitQuestion(models.Model):
     exam = models.ForeignKey(Exam, on_delete = models.CASCADE)
     question = models.ForeignKey(Questions, on_delete=models.CASCADE)
     answer = models.ForeignKey(QuestionChoice, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.question
