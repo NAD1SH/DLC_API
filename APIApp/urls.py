@@ -24,5 +24,5 @@ urlpatterns = [
     path('add_questions/', views.AddExamQuestionsView.as_view(), name='addQuestion'),
     path('exam_questions/<int:id>/', views.ExamQuestionView.as_view(), name='examQuestion'),
 
-    path('check_question/<int:id1>/<int:id2>/', views.CheckCorrectAnswerView.as_view(), name='checkQuestion')
+    path('check_question/<int:id>/', views.CheckCorrectAnswerView.as_view(), name='checkQuestion')
 ]

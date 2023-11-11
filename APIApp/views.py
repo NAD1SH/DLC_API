@@ -109,7 +109,7 @@ class LogoutView(APIView):
         response = Response()
         response.delete_cookie("jwt")
         response.data = {
-            "message": "success"
+            "message": "success"    
         }
         return response
 
@@ -249,7 +249,7 @@ class ExamQuestionView(APIView):
     
 
 class CheckCorrectAnswerView(APIView):
-    def post(self, request, id1, id2):
+    def post(self, request, id):
         token = request.COOKIES.get('jwt')
 
         if not token:
@@ -261,28 +261,36 @@ class CheckCorrectAnswerView(APIView):
             raise AuthenticationFailed('Unauthenticated')   
 
         user = CustomUser.objects.get(id=playload["id"])
-        question = Questions.objects.get(pk = id1)
-        choices = question.choices.get(pk = id2)
-        exam = Exam.objects.get(pk = question.exam.id)
+        que_id = QuestionChoice.objects.filter(pk = id).first()       
+        question = Questions.objects.get(pk=que_id.question.id)
+        choices = question.choices.get(pk=id)
+        exam = Exam.objects.get(pk=question.exam.id)
 
-        serializer = SubmitQuestionSerializer(data=request.data)
+        serializer = SubmitQuestionSerializer(data = {
+            "user" : user.id,
+            "exam" : exam.id,
+            "question" : question.id,
+            "answer" : choices.id
+        })
         
-        # serializer.save()
-        # return Response("Answer Submited")   
-
         if serializer.is_valid():
             # serializer.save()
             return Response("Answer Submitted", status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        # data = []
         
-        # data.append({
-        #     'question' : question.question,
-        #     'choices': QuestionChoiceSerializer(choices).data
-        # })
-        # return Response(data)
 
 class ShowResultView(APIView):
     def get(self, request):
-        pass 
+        token = request.COOKIES.get('jwt')
+
+        if not token:
+            raise AuthenticationFailed('Unauthenticated')
+
+        try:
+            playload = jwt.decode(token, 'secret', algorithm=['HS256'])
+        except jwt.ExpiredSignatureError:
+            raise AuthenticationFailed('Unauthenticated')
+
+        user = CustomUser.objects.get(id=playload["id"])
+        
