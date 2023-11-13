@@ -6,7 +6,6 @@ urlpatterns = [
     path('Login/', views.LoginView.as_view(), name='login_page'),
     path('User/', views.UserView.as_view(), name='user-page'),
     path('Logout/', views.LogoutView.as_view(), name='logout'),
-    path('user_list/', views.UserListView.as_view(), name='userList'),
 
     path('sessions/', views.LiveSessionView.as_view(), name='LiveSession'),   
     path('add_session/', views.AddLiveSessionView.as_view(), name='addSession'),
@@ -24,6 +23,6 @@ urlpatterns = [
     path('add_questions/', views.AddExamQuestionsView.as_view(), name='addQuestion'),
     path('exam_questions/<int:id>/', views.ExamQuestionView.as_view(), name='examQuestion'),
 
-    path('check_question/<int:id>/', views.CheckCorrectAnswerView.as_view(), name='checkQuestion'),
+    path('submit_question/<int:id>/', views.CheckCorrectAnswerView.as_view(), name='checkQuestion'),
     path('exam_resutl/<int:id>/', views.ShowResultView.as_view(), name='examResult'),
 ]

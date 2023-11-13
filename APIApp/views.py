@@ -114,13 +114,6 @@ class LogoutView(APIView):
         return response
 
 
-class UserListView(APIView):
-    def get(self, request):
-        user_list = CustomUser.objects.all()
-        serializer = CustomUserSerializer(user_list, many=True)
-        return Response(serializer.data)
-
-
 class AddProfileView(APIView):
     def post(self, request):
         serializer = ProfileSerializer(data=request.data)
