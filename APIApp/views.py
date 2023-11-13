@@ -180,7 +180,7 @@ class ExamUnattendedList(APIView):
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed('Unauthenticated')
         
-        ExamStatus.objects.filter(exam__end_date__lt=current_datetime).update(is_status="completed")
+        ExamStatus.objects.filter(exam__end_date__lte = current_datetime).update(is_status="completed")
         user = CustomUser.objects.get(id=playload["id"])
         exams = Exam.objects.all()
         examStatus = ExamStatus.objects.filter(
@@ -207,7 +207,7 @@ class ExamCompletedList(APIView):
             raise AuthenticationFailed('Unauthenticated')
 
         ExamStatus.objects.filter(
-            exam__end_date__lt=current_datetime).update(is_status="completed")
+            exam__end_date__lte = current_datetime).update(is_status="completed")   
         user = CustomUser.objects.get(id=playload["id"])
         examStatus = ExamStatus.objects.filter(
             user=user, is_status="completed")
@@ -235,8 +235,24 @@ class AddExamQuestionsView(APIView):
 
 class ExamQuestionView(APIView):
     def get(self, request, id):
+        token = request.COOKIES.get('jwt')
+
+        if not token:
+            raise AuthenticationFailed('Unauthenticated')
+
+        try:
+            playload = jwt.decode(token, 'secret', algorithm=['HS256'])
+        except jwt.ExpiredSignatureError:
+            raise AuthenticationFailed('Unauthenticated')
+
+        user = CustomUser.objects.get(id=playload["id"])
+
         questions = Questions.objects.filter(exam=id)
+
+        ExamStatus.objects.filter(
+            user=user, exam=id).update(is_status="completed")
         data = []
+
         for question in questions:
             choices = question.choices.all()
             data.append({
@@ -266,6 +282,8 @@ class CheckCorrectAnswerView(APIView):
         choices = question.choices.get(pk=id)
         exam = Exam.objects.get(pk=question.exam.id)
 
+        date_time = timezone.now()
+
         serializer = SubmitQuestionSerializer(data = {
             "user" : user.id,
             "exam" : exam.id,
@@ -273,15 +291,21 @@ class CheckCorrectAnswerView(APIView):
             "answer" : choices.id
         })
         
-        if serializer.is_valid():
-            # serializer.save()
-            return Response("Answer Submitted", status=status.HTTP_201_CREATED)
+        if SubmitQuestion.objects.filter(user = user.id, question = question.id).exists():
+            return Response("Answer Already Submited", status=status.HTTP_208_ALREADY_REPORTED)
         else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+           if date_time >= exam.start_date and date_time  <= exam.end_date:
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response("Answer Submitted", status=status.HTTP_201_CREATED)
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+           else:
+               return Response("Exam Time Has Been Completed", status=status.HTTP_406_NOT_ACCEPTABLE)
         
 
 class ShowResultView(APIView):
-    def get(self, request):
+    def get(self, request, id):
         token = request.COOKIES.get('jwt')
 
         if not token:
@@ -293,4 +317,33 @@ class ShowResultView(APIView):
             raise AuthenticationFailed('Unauthenticated')
 
         user = CustomUser.objects.get(id=playload["id"])
-        
+        submit_que = SubmitQuestion.objects.filter(user = user, exam = id)
+        question = Questions.objects.filter(exam  = id).count()
+        exam = Exam.objects.get(pk = id)
+        serializer = ExamSerializer(exam).data
+
+        total_mark = 0
+        correct_answer = 0
+        wrong_answer = 0
+
+        for i in submit_que:
+            if i.answer.is_correct:
+                total_mark += exam.mark_per_question
+                correct_answer += 1
+            else:
+                total_mark -= exam.negative_mark
+                wrong_answer += 1
+
+        unattented_answer = question - (correct_answer + wrong_answer)
+
+        response = Response()
+        response.data = {
+            "exam" : serializer,
+            "total_question": question,
+            "correct_answer" : correct_answer,
+            "wrong_answer" : wrong_answer,
+            "unattented_answer" : unattented_answer,
+            "total_mark": total_mark,
+        }
+
+        return response

@@ -60,9 +60,3 @@ class SubmitQuestionSerializer(serializers.ModelSerializer):
         model = SubmitQuestion
         fields = '__all__'
 
-
-
-class ResultSerializer(serializers.ModelSerializer):
-    class Meta:
-        models = Result
-        fields = "__all__"

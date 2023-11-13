@@ -85,15 +85,6 @@ class QuestionChoice(models.Model):
         return self.text
 
 
-class Result(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
-    total_mark = models.IntegerField()
-
-    def __str__(self):
-        return self.user
-
-
 class SubmitQuestion(models.Model):
     user = models.ForeignKey(CustomUser, on_delete = models.CASCADE)
     exam = models.ForeignKey(Exam, on_delete = models.CASCADE)
@@ -102,3 +93,4 @@ class SubmitQuestion(models.Model):
 
     def __str__(self):
         return self.question.question
+    
