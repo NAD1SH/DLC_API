@@ -8,10 +8,9 @@ from .models import *
 import jwt
 from APIApp.models import TokenAuth
 from pytz import UTC
-from datetime import datetime, timezone
+from datetime import datetime
 from django.utils import timezone
 
-current_datetime = timezone.now()
 # Create your views here.
 
 
@@ -79,10 +78,11 @@ class UserView(APIView):
 class LiveSessionView(APIView):
     def get(self, request):
         status = request.query_params.get('status', None)
-        LiveSession.objects.filter(start_time__lte=current_datetime,
-                                   end_time__gt=current_datetime, is_status="upcoming").update(is_status="ongoing")
+        current_datetime = timezone.now()
         LiveSession.objects.filter(
-            end_time__lte=current_datetime, is_status="ongoing").update(is_status="completed")
+            start_time__lte=current_datetime, end_time__gt=current_datetime).update(is_status="ongoing")
+        LiveSession.objects.filter(end_time__lte=current_datetime).update(is_status="completed")
+
         if status == 'upcoming':
             sessions = LiveSession.objects.filter(is_status="upcoming")
         elif status == 'ongoing':
@@ -104,12 +104,24 @@ class AddLiveSessionView(APIView):
         return Response(serializer.data)
 
 
+class UpdateLiveSessionView(APIView):
+    def post(self, request, id):
+        up_session = LiveSession.objects.get(pk = id)
+        serializer = LiveSessionSerializer(instance=up_session, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
 class LogoutView(APIView):
     def post(self, request):
         response = Response()
         response.delete_cookie("jwt")
         response.data = {
-            "message": "success"    
+            "message": "success"
         }
         return response
 
@@ -163,6 +175,7 @@ class AddExamView(APIView):
 
 class ExamUnattendedList(APIView):
     def get(self, request):
+        current_datetime = timezone.now()
         token = request.COOKIES.get('jwt')
 
         if not token:
@@ -172,8 +185,9 @@ class ExamUnattendedList(APIView):
             playload = jwt.decode(token, 'secret', algorithm=['HS256'])
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed('Unauthenticated')
-        
-        ExamStatus.objects.filter(exam__end_date__lte = current_datetime).update(is_status="completed")
+
+        ExamStatus.objects.filter(
+            exam__end_date__lte=current_datetime).update(is_status="completed")
         user = CustomUser.objects.get(id=playload["id"])
         exams = Exam.objects.all()
         examStatus = ExamStatus.objects.filter(
@@ -189,6 +203,7 @@ class ExamUnattendedList(APIView):
 
 class ExamCompletedList(APIView):
     def get(self, request):
+        current_datetime = timezone.now()
         token = request.COOKIES.get('jwt')
 
         if not token:
@@ -200,7 +215,7 @@ class ExamCompletedList(APIView):
             raise AuthenticationFailed('Unauthenticated')
 
         ExamStatus.objects.filter(
-            exam__end_date__lte = current_datetime).update(is_status="completed")   
+            exam__end_date__lte=current_datetime).update(is_status="completed")
         user = CustomUser.objects.get(id=playload["id"])
         examStatus = ExamStatus.objects.filter(
             user=user, is_status="completed")
@@ -211,7 +226,7 @@ class ExamCompletedList(APIView):
 
 class AttemptQuestionView(APIView):
     def get(self, request, id):
-        exam = Exam.objects.get(pk = id)
+        exam = Exam.objects.get(pk=id)
         serializer = ExamSerializer(exam)
         return Response(serializer.data)
 
@@ -255,7 +270,7 @@ class ExamQuestionView(APIView):
                 'choices': QuestionChoiceSerializer(choices, many=True).data
             })
         return Response(data)
-    
+
 
 class CheckCorrectAnswerView(APIView):
     def post(self, request, id):
@@ -267,35 +282,35 @@ class CheckCorrectAnswerView(APIView):
         try:
             playload = jwt.decode(token, 'secret', algorithm=['HS256'])
         except jwt.ExpiredSignatureError:
-            raise AuthenticationFailed('Unauthenticated')   
+            raise AuthenticationFailed('Unauthenticated')
 
         user = CustomUser.objects.get(id=playload["id"])
-        que_id = QuestionChoice.objects.filter(pk = id).first()       
+        que_id = QuestionChoice.objects.filter(pk=id).first()
         question = Questions.objects.get(pk=que_id.question.id)
         choices = question.choices.get(pk=id)
         exam = Exam.objects.get(pk=question.exam.id)
 
         date_time = timezone.now()
 
-        serializer = SubmitQuestionSerializer(data = {
-            "user" : user.id,
-            "exam" : exam.id,
-            "question" : question.id,
-            "answer" : choices.id
+        serializer = SubmitQuestionSerializer(data={
+            "user": user.id,
+            "exam": exam.id,
+            "question": question.id,
+            "answer": choices.id
         })
-        
-        if SubmitQuestion.objects.filter(user = user.id, question = question.id).exists():
+
+        if SubmitQuestion.objects.filter(user=user.id, question=question.id).exists():
             return Response("Answer Already Submited", status=status.HTTP_208_ALREADY_REPORTED)
         else:
-           if date_time >= exam.start_date and date_time  <= exam.end_date:
+            if date_time >= exam.start_date and date_time <= exam.end_date:
                 if serializer.is_valid():
                     serializer.save()
                     return Response("Answer Submitted", status=status.HTTP_201_CREATED)
                 else:
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-           else:
-               return Response("Exam Time Has Been Completed", status=status.HTTP_406_NOT_ACCEPTABLE)
-        
+            else:
+                return Response("Exam Time Has Been Completed", status=status.HTTP_406_NOT_ACCEPTABLE)
+
 
 class ShowResultView(APIView):
     def get(self, request, id):
@@ -310,9 +325,9 @@ class ShowResultView(APIView):
             raise AuthenticationFailed('Unauthenticated')
 
         user = CustomUser.objects.get(id=playload["id"])
-        submit_que = SubmitQuestion.objects.filter(user = user, exam = id)
-        question = Questions.objects.filter(exam  = id).count()
-        exam = Exam.objects.get(pk = id)
+        submit_que = SubmitQuestion.objects.filter(user=user, exam=id)
+        question = Questions.objects.filter(exam=id).count()
+        exam = Exam.objects.get(pk=id)
         serializer = ExamSerializer(exam).data
 
         total_mark = 0
@@ -331,11 +346,11 @@ class ShowResultView(APIView):
 
         response = Response()
         response.data = {
-            "exam" : serializer,
+            "exam": serializer,
             "total_question": question,
-            "correct_answer" : correct_answer,
-            "wrong_answer" : wrong_answer,
-            "unattented_answer" : unattented_answer,
+            "correct_answer": correct_answer,
+            "wrong_answer": wrong_answer,
+            "unattented_answer": unattented_answer,
             "total_mark": total_mark,
         }
 

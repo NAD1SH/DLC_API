@@ -9,6 +9,7 @@ urlpatterns = [
 
     path('sessions/', views.LiveSessionView.as_view(), name='LiveSession'),   
     path('add_session/', views.AddLiveSessionView.as_view(), name='addSession'),
+    path('update_session/<int:id>/', views.UpdateLiveSessionView.as_view(), name='updateSession'),
 
     path('add_profile/', views.AddProfileView.as_view(), name='addProfile'),
     path('profile/', views.ProfileView.as_view(), name='profile'),
